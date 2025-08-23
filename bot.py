@@ -12,7 +12,18 @@ conn = sqlite3.connect('tasks.db')
 cursor = conn.cursor()
 
 
+#---db funks---
+def add_task_to_db(user_id, task_text):
+    cursor.execute('INSERT INTO tasks (user_id, task_text) VALUES (?, ?)', (user_id, task_text))
+    conn.commit()
 
+
+def get_tasks_from_db(user_id):
+    cursor.execute('SELECT task_text FROM tasks WHERE user_id = ?', (user_id,))
+    return [row[0] for row in cursor.fetchall()]
+
+
+#---tg funks---
 async def start(update, context):
     user_name = update.message.from_user.first_name
     await update.message.reply_text(f'Hi, {user_name}, im a simple Telegram bot for managing to-do tasks.')
@@ -27,16 +38,16 @@ async def start(update, context):
 async def add_task(update, context, text):
     task = text.strip()
     if task:
-        tasks = context.user_data.get('tasks', [])
-        tasks.append(task)
-        context.user_data['tasks'] = tasks
+        user_id = update.message.from_user.id
+        add_task_to_db(user_id, task)
         await update.message.reply_text(f'Task added: {task}')
     else:
         await update.message.reply_text('Empty task not added.')
 
 
 async def show_tasks(update, context):
-    tasks = context.user_data.get('tasks', [])
+    user_id = update.message.from_user.id
+    tasks = get_tasks_from_db(user_id)
 
     if tasks:
         tasks_list = "\n".join([f"{i + 1}. {task}" for i, task in enumerate(tasks)])
